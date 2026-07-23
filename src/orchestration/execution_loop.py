@@ -22,6 +22,7 @@ from src.agents.executor.agent import ExecutorAgent, ExecutorResult
 from src.orchestration.enforcement import EnforcementEngine
 from src.routing.tier_router import TierRouter
 from src.tools.worktree import WorktreeManager
+from src.tools.git_rollback import GitRollback
 from src.validators.pipeline import PipelineResult, ValidationPipeline
 from src.validators.base import ValidationContext, ValidationStatus
 from typing import TYPE_CHECKING
@@ -93,6 +94,7 @@ class ExecutionLoop:
         executor: ExecutorAgent | None = None,
         worktree: WorktreeManager | None = None,
         reviewer = None,  # ContractReviewerAgent (import lazy para evitar circular)
+        rollback: GitRollback | None = None,
         project_root: str = "",
         max_attempts_default: int = 3,
         max_cost_per_task: float = 0.50,  # USD
@@ -102,6 +104,7 @@ class ExecutionLoop:
         self._default_executor = executor
         self.worktree = worktree
         self._reviewer = reviewer
+        self.rollback = rollback
         self.project_root = project_root
         self.max_attempts_default = max_attempts_default
         self.max_cost_per_task = max_cost_per_task
@@ -151,6 +154,15 @@ class ExecutionLoop:
 
         # Loop de execução + validação
         last_validation_feedback = ""
+
+        # ── Git Rollback (Fase 7.0): snapshot de seguranca ─────────
+        _use_rollback = (
+            self.rollback is not None
+            and self.rollback.available
+        )
+        if _use_rollback:
+            self.rollback.snapshot()
+        # ───────────────────────────────────────────────────────────
 
         # ── Worktree (Fase 6.0): execução isolada ─────────────────────
         _use_worktree = (
@@ -400,6 +412,8 @@ class ExecutionLoop:
                         contract.allowed_files
                     )
                     result.status = ExecutionStatus.MERGED
+                    if _use_rollback:
+                        self.rollback.commit_safety(contract.task_id)
                     logger.info(
                         f"[{contract.task_id}] Merge: "
                         f"{len(result.modified_files)} arquivos alterados"
@@ -439,6 +453,11 @@ class ExecutionLoop:
                     logger.warning(
                         f"[{contract.task_id}] ESCALADO após {max_attempts} tentativas"
                     )
+
+        # ── Git Rollback cleanup ────────────────────────────────
+        if _use_rollback and result.status != ExecutionStatus.MERGED:
+            self.rollback.rollback()
+        # ──────────────────────────────────────────────────────────
 
         # ── Worktree cleanup ──────────────────────────────────────
         if _use_worktree and self.worktree.active:

@@ -20,6 +20,8 @@ from src.agents.review.contract_reviewer import ContractReviewerAgent
 from src.orchestration.execution_loop import ExecutionLoop, ExecutionStatus
 from src.routing.tier_router import TierRouter
 from src.tools.worktree import WorktreeManager
+from src.tools.git_rollback import GitRollback
+from src.routing.cost_ledger import CostLedger
 from src.validators.pipeline import ValidationPipeline
 from src.validators.diff_validator import DiffValidator
 from src.validators.schema_validator import SchemaValidator
@@ -87,6 +89,8 @@ def skill_run(
 
     router = TierRouter()
     worktree = WorktreeManager(str(project_path))
+    rollback = GitRollback(str(project_path))
+    ledger = CostLedger()
 
     reviewer = None
     if use_reviewer:
@@ -104,6 +108,7 @@ def skill_run(
         ]),
         worktree=worktree,
         reviewer=reviewer,
+        rollback=rollback,
         project_root=str(project_path),
         max_attempts_default=max_attempts,
     )
@@ -113,6 +118,16 @@ def skill_run(
 
     total_tokens += result.total_tokens
     total_cost += result.total_cost
+
+    # CostLedger tracking
+    ledger.record(
+        provider="multiagentes-run",
+        model="pipeline",
+        tokens_in=total_tokens,
+        tokens_out=0,
+        cost=total_cost,
+        task_id=contract.task_id,
+    )
 
     # ── Resultado ──────────────────────────────────────────────────
     print(f"\n[3/3] Resultado: {result.status.value}")
