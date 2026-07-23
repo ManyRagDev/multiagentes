@@ -21,6 +21,8 @@ from src.orchestration.execution_loop import ExecutionLoop, ExecutionStatus
 from src.routing.tier_router import TierRouter
 from src.tools.worktree import WorktreeManager
 from src.validators.pipeline import ValidationPipeline
+from src.validators.diff_validator import DiffValidator
+from src.validators.schema_validator import SchemaValidator
 
 
 def skill_run(
@@ -96,7 +98,10 @@ def skill_run(
 
     loop = ExecutionLoop(
         router=router,
-        validation_pipeline=ValidationPipeline(validators=[]),
+        validation_pipeline=ValidationPipeline(validators=[
+            SchemaValidator(),
+            DiffValidator(),
+        ]),
         worktree=worktree,
         reviewer=reviewer,
         project_root=str(project_path),

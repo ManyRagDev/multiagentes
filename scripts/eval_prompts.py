@@ -31,6 +31,7 @@ SCRIPTS = [
     ("Fase 5.2 — Planner", "scripts/eval_planner_prompts.py"),
     ("Fase 5.3 — Reviewer", "scripts/eval_reviewer_prompts.py"),
     ("Fase 5.4 — Enforcement", "scripts/eval_enforcement.py"),
+    ("Fase 6.4 — Pipeline E2E", "scripts/test_pipeline_e2e.py"),
 ]
 
 

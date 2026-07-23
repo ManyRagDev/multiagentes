@@ -1,8 +1,8 @@
 # 📘 DOCUMENTO MESTRE - Multi-Agentes Harness
 
-> **Última Atualização:** 2026-07-23 (Fase 5 CONCLUÍDA: todas as sub-fases 5.0 a 5.5 — Engenharia de Prompt por Princípios — validadas)  
-> **Status da Fase Atual:** ✅ FASE 5 CONCLUÍDA — Prompt Engineering, Enforcement e Suite de Regressão finalizados  
-> **Versão do Sistema:** 0.9.0-alpha
+> **Última Atualização:** 2026-07-23 (Fase 6 CONCLUÍDA: pipeline completo Planner→Executor→Reviewer→Merge validado em produção)  
+> **Status da Fase Atual:** ✅ FASE 6 CONCLUÍDA — Worktree, Bridge, Reviewer, CLI Run, Suite E2E  
+> **Versão do Sistema:** 1.0.0-alpha
 > **Plano Ativo:** [PLANO_FASE5.md](./PLANO_FASE5.md) — Engenharia de Prompt por Princípios
 > **Stacks Suportadas:** Python, TypeScript, JavaScript (React/Vite/Node)
 > **Resultado E2E:** 3/3 testes passaram | LOCAL: 505 tokens/8.9s | MEDIUM: 1178 tokens/34.8s | Custo total: $0.00

@@ -27,7 +27,7 @@ class PlanContractAgent(BaseAgent[TaskContract]):
             config = AgentConfig(
                 nome="PlanContract",
                 role="Planejador que transforma objetivos em contratos para o Executor",
-                model="claude-sonnet-4-6",
+                model="glm-5.2",
                 temperature=0.3,
                 prompt_file="prompts/planning/planner.prompty",
                 dominio="planning",

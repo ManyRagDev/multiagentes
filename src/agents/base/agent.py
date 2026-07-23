@@ -8,6 +8,9 @@ from typing import TypeVar, Type, Any, Dict, Generic
 from openai import OpenAI
 from pydantic import BaseModel
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from src.schemas.agent import AgentConfig, AgentOutput
 from src.providers import ProviderRegistry
 
@@ -43,19 +46,19 @@ class BaseAgent(ABC, Generic[T]):
 
         # Cliente OpenAI (compatível com qualquer API compatível)
         if client is None:
-            # Tentar resolver via provider registrado
             provider_name = getattr(config, 'provider', None)
             if provider_name and ProviderRegistry.has(provider_name):
                 provider = ProviderRegistry.get(provider_name)
-                # Garante que providers locais estão prontos
                 if hasattr(provider, 'ensure_ready'):
                     provider.ensure_ready()
                 self.client = provider.get_client()
             else:
-                # Fallback: API remota padrão
-                api_key = os.getenv("ZAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+                api_key = os.getenv("ZAI_API_KEY") or os.getenv("OPENAI_API_KEY") or "test-dummy-key"
                 base_url = os.getenv("ZAI_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-                self.client = OpenAI(api_key=api_key, base_url=base_url)
+                try:
+                    self.client = OpenAI(api_key=api_key, base_url=base_url)
+                except Exception:
+                    self.client = None
         else:
             self.client = client
 
@@ -91,22 +94,10 @@ class BaseAgent(ABC, Generic[T]):
         )
 
     def format_prompt(self, **kwargs) -> str:
-        """
-        Formata o prompt com as variáveis fornecidas.
-
-        Args:
-            **kwargs: Variáveis para substituir no prompt
-
-        Returns:
-            Prompt formatado
-        """
         template = self.load_prompt()
-
-        # Substituir variáveis no formato {{var}}
         for key, value in kwargs.items():
-            placeholder = f"{{{{{key}}}}}"
+            placeholder = "{{" + key + "}}"
             template = template.replace(placeholder, str(value))
-
         return template
 
     @abstractmethod
@@ -120,28 +111,22 @@ class BaseAgent(ABC, Generic[T]):
         pass
 
     def parse_output(self, raw: str) -> T:
-        """
-        Parseia a resposta bruta para o schema Pydantic.
-
-        Args:
-            raw: Resposta bruta do modelo
-
-        Returns:
-            Objeto Pydantic parseado
-        """
-        # Limpar markdown code blocks
         cleaned = raw.strip()
+        # Remover markdown code blocks
         if cleaned.startswith('```'):
-            # Remover ```json ou ``` no início
             lines = cleaned.split('\n')
             if lines[0].startswith('```'):
                 lines = lines[1:]
-            # Remover ``` no final
             if lines and lines[-1].startswith('```'):
                 lines = lines[:-1]
-            cleaned = '\n'.join(lines)
+            cleaned = '\n'.join(lines).strip()
 
-        cleaned = cleaned.strip()
+        # Extrair JSON de texto com preambulo: acha primeiro { e ultimo }
+        if not cleaned.startswith('{'):
+            start = cleaned.find('{')
+            end = cleaned.rfind('}')
+            if start >= 0 and end > start:
+                cleaned = cleaned[start:end + 1]
 
         # Parsear JSON
         try:
@@ -172,6 +157,16 @@ class BaseAgent(ABC, Generic[T]):
             AgentOutput com resultado ou erro
         """
         try:
+            if self.client is None:
+                return AgentOutput(
+                    agente=self.config.nome,
+                    sucesso=False,
+                    output=None,
+                    raw_output=None,
+                    erro="Cliente OpenAI nao configurado. Forneca uma API key ou registre um provider.",
+                    tokens_usados=None,
+                )
+
             # Formatar prompt
             prompt = self.format_prompt(**kwargs)
 
@@ -209,7 +204,7 @@ class BaseAgent(ABC, Generic[T]):
                 agente=self.config.nome,
                 sucesso=False,
                 output=None,
-                raw_output=None,
+                raw_output=locals().get("raw_output"),
                 erro=str(e),
                 tokens_usados=None
             )

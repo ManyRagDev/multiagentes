@@ -206,6 +206,25 @@ class ExecutionLoop:
                 result.total_tokens += exec_result.tokens_used
                 result.total_cost += exec_result.cost
 
+                # ── P1.6: needs_context detection ──────────────────
+                if exec_result.metadata and exec_result.metadata.get("needs_context"):
+                    result.status = ExecutionStatus.ESCALATED
+                    result.escalation_reason = (
+                        "Executor sinalizou needs_context — "
+                        "contexto insuficiente para executar a tarefa. "
+                        "Adicione context_snippets ou reavalie o contrato."
+                    )
+                    result.history.append({
+                        "step": "needs_context",
+                        "attempt": attempt,
+                        "reason": "Executor requires more context",
+                    })
+                    logger.warning(
+                        f"[{contract.task_id}] needs_context detectado"
+                    )
+                    break
+                # ──────────────────────────────────────────────────
+
                 # ── Worktree: aplicar output aos arquivos ──────────
                 if _use_worktree and result.output.strip():
                     self.worktree.apply_output(
@@ -346,6 +365,12 @@ class ExecutionLoop:
                             "attempt": attempt,
                             "error": str(e),
                         })
+                        # Reviewer failure is fail-closed — escalate, never merge
+                        result.status = ExecutionStatus.ESCALATED
+                        result.escalation_reason = (
+                            f"Reviewer indisponivel: {e}"
+                        )
+                        break
                 # ───────────────────────────────────────────────────────
 
                 if reviewer_needs_retry:

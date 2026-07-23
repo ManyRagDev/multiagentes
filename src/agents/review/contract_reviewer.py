@@ -29,11 +29,12 @@ class ContractReviewerAgent(BaseAgent[ReviewVerdict]):
             config = AgentConfig(
                 nome="ContractReviewer",
                 role="Revisor cético que avalia código contra contrato",
-                model="deepseek-v4-pro",
+                model="deepseek-chat",
                 temperature=0.2,
                 prompt_file="prompts/verify/reviewer.prompty",
                 dominio="verify",
                 output_schema="ReviewVerdict",
+                provider="deepseek",
             )
         super().__init__(config, client=client)
 
@@ -46,27 +47,28 @@ class ContractReviewerAgent(BaseAgent[ReviewVerdict]):
         executor_output: str,
         validation_summary: str = "",
     ) -> ReviewVerdict:
-        """Avalia o output do executor contra o contrato.
-
-        Args:
-            contract: TaskContract com objective, constraints, acceptance_criteria
-            executor_output: Código/diff gerado pelo executor
-            validation_summary: Resumo da validação determinística
-
-        Returns:
-            ReviewVerdict com status, issues e approval_evidence
-        """
-        prompt = self._build_review_prompt(
+        system_prompt = self.load_prompt()
+        review_data = self._build_review_prompt(
             contract=contract,
             executor_output=executor_output,
             validation_summary=validation_summary,
         )
-        result = self.run(prompt=prompt)
 
-        if not result.sucesso:
-            raise RuntimeError(f"Reviewer falhou: {result.erro}")
+        try:
+            response = self.client.chat.completions.create(
+                model=self.config.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": review_data},
+                ],
+                temperature=self.config.temperature,
+            )
+            raw_output = response.choices[0].message.content
+            verdict = self.parse_output(raw_output)
 
-        return result.output
+            return verdict
+        except Exception as e:
+            raise RuntimeError(f"Reviewer API falhou: {e}") from e
 
     @staticmethod
     def _build_review_prompt(

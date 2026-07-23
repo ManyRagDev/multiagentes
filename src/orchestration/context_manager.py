@@ -93,16 +93,9 @@ class ContextManager:
 
         return assignment
 
-    def count_tokens_estimate(self, text: str) -> int:
-        """
-        Estima token count (aproximado: 4 chars ≈ 1 token).
-
-        Args:
-            text: Texto para estimar
-
-        Returns:
-            Estimativa de tokens
-        """
+    def count_tokens_estimate(self, text: str | int) -> int:
+        if isinstance(text, int):
+            return text // 4
         return len(text) // 4
 
     def get_context_summary(self, files: Dict[str, str]) -> Dict[str, Any]:

@@ -1,5 +1,6 @@
 """Base provider interface and registry for LLM backends."""
 
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
@@ -7,12 +8,7 @@ from openai import OpenAI
 
 
 class BaseProvider(ABC):
-    """Interface para todos os providers de LLM.
-
-    Todo provider deve ser capaz de:
-    - Retornar um cliente OpenAI-compatível
-    - Informar se está disponível (health check)
-    """
+    """Interface para todos os providers de LLM."""
 
     @abstractmethod
     def get_client(self) -> OpenAI:
@@ -29,6 +25,43 @@ class BaseProvider(ABC):
     def name(self) -> str:
         """Nome identificador do provider."""
         pass
+
+
+class RemoteProvider(BaseProvider):
+    """Provider para APIs remotas (DeepSeek, GLM, Groq).
+
+    Configurado via variáveis de ambiente:
+    - {PREFIX}_API_KEY
+    - {PREFIX}_BASE_URL (opcional)
+    """
+
+    def __init__(self, name: str, env_prefix: str, default_model: str = ""):
+        self._name = name
+        self.env_prefix = env_prefix
+        self.default_model = default_model
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def is_available(self) -> bool:
+        return bool(
+            os.getenv(f"{self.env_prefix}_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        )
+
+    def get_client(self) -> OpenAI:
+        api_key = os.getenv(f"{self.env_prefix}_API_KEY") or os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv(f"{self.env_prefix}_BASE_URL")
+        if not api_key:
+            raise RuntimeError(
+                f"Provider '{self._name}' requer {self.env_prefix}_API_KEY "
+                f"ou OPENAI_API_KEY no ambiente"
+            )
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        return OpenAI(**kwargs)
 
 
 class ProviderRegistry:
