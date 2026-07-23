@@ -1,0 +1,119 @@
+# Manifest de Skills - Sistema Multiagentes
+# Integração com Claude Code / OpenCode
+#
+# Este arquivo descreve as skills disponíveis para uso via Claude Code.
+
+apiVersion: "v1"
+kind: "SkillsManifest"
+metadata:
+  name: "multiagentes"
+  description: "Sistema multiagentes para planejamento, auditoria e implementação de código"
+  version: "0.1.0"
+
+skills:
+  - name: "plano"
+    displayName: "/plano"
+    description: "Gera plano de implementação validado com verificação de dependências"
+    category: "planning"
+    handler: "src.skills.plano:skill_plano"
+    parameters:
+      - name: "objetivo"
+        type: "string"
+        required: true
+        description: "O que precisa ser implementado"
+      - name: "contexto"
+        type: "string"
+        required: false
+        description: "Contexto adicional sobre o projeto"
+    examples:
+      - description: "Planejar autenticação JWT"
+        input: "Adicionar autenticação JWT à API"
+      - description: "Planejar refatoração"
+        input: "Refatorar módulo de usuários para usar repository pattern"
+
+  - name: "auditoria"
+    displayName: "/auditoria"
+    description: "Audita código com múltiplos agentes e verificação adversarial"
+    category: "analysis"
+    handler: "src.skills.auditoria:skill_auditoria"
+    parameters:
+      - name: "caminho_codigo"
+        type: "string"
+        required: true
+        description: "Caminho para arquivo ou diretório"
+      - name: "dimensoes"
+        type: "array"
+        required: false
+        description: "Dimensões a analisar (bugs, security, performance)"
+        default: ["bugs", "security", "performance"]
+      - name: "linguagem"
+        type: "string"
+        required: false
+        description: "Linguagem do código"
+        default: "python"
+    examples:
+      - description: "Auditoria completa do projeto"
+        input: ["src/", ["bugs", "security", "performance"]]
+      - description: "Apenas bugs e segurança"
+        input: ["src/", ["bugs", "security"]]
+
+  - name: "implementar"
+    displayName: "/implementar"
+    description: "Implementa plano com geração de código e verificação"
+    category: "generation"
+    handler: "src.skills.implementar:skill_implementar"
+    parameters:
+      - name: "plano"
+        type: "object"
+        required: true
+        description: "Plano a implementar (objeto Plan ou dict)"
+      - name: "output_dir"
+        type: "string"
+        required: false
+        description: "Diretório para salvar arquivos gerados"
+      - name: "linguagem"
+        type: "string"
+        required: false
+        description: "Linguagem do código"
+        default: "python"
+    examples:
+      - description: "Implementar plano autenticação"
+        input:
+          plano:
+            objetivo: "Adicionar autenticação JWT"
+            passos: [...]
+          output_dir: "src/auth/"
+
+# Workflows compostos
+workflows:
+  - name: "planejar_e_implementar"
+    displayName: "Planejar e Implementar"
+    description: "Gera plano validado e implementa automaticamente"
+    steps:
+      - skill: "plano"
+        name: "gerar_plano"
+      - skill: "implementar"
+        name: "implementar_codigo"
+        depends_on: "gerar_plano"
+        input_from: "gerar_plano.plano"
+
+  - name: "auditar_e_corrigir"
+    displayName: "Auditar e Corrigir"
+    description: "Audita código e sugere correções"
+    steps:
+      - skill: "auditoria"
+        name: "auditar"
+
+# Configuração de modelos
+models:
+  default: "claude-sonnet-4-6"
+  creative: "claude-sonnet-4-6"
+  precise: "claude-sonnet-4-6"
+  fast: "claude-haiku-4-5"
+
+# Metadata
+metadata:
+  author: "emanu"
+  license: "MIT"
+  repository: "https://github.com/emanu/multiagentes"
+  tags: ["multiagentes", "auditoria", "planejamento", "codigo"]

@@ -1,0 +1,52 @@
+[project]
+name = "multiagentes"
+version = "0.1.0"
+description = "Sistema multiagentes para perícia/auditoria de código com verificação adversarial"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "emanu" }
+]
+
+dependencies = [
+    "openai>=1.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "langgraph>=0.2",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "black>=23.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+multiagentes-plano = "src.skills.plano:main"
+multiagentes-auditoria = "src.skills.auditoria:main"
+multiagentes-implementar = "src.skills.implementar:main"
+multiagentes-contrato = "src.skills.contrato:main"
+multiagentes-run = "src.skills.run:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

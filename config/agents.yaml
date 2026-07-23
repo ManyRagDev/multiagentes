@@ -1,0 +1,167 @@
+# Catálogo de Agentes - Sistema Multiagentes
+# Cada agente tem configuração de modelo, temperatura e prompt
+
+# === PROVIDERS ===
+# Configuração dos backends de LLM
+providers:
+  local-qwen:
+    base_url: "http://127.0.0.1:8080/v1"
+    health_endpoint: "http://127.0.0.1:8080/health"
+    startup_command: "cd c:\\llama.cpp && llama-server.exe -m models\\qwen2.5-coder-7b-instruct-q4_k_m.gguf -ngl 99 -c 8192 --port 8080"
+    startup_timeout: 45
+    auto_restart: true
+    model_name: "qwen2.5-coder-7b-instruct"
+
+# Modelos disponíveis (GLM, DeepSeek e Local)
+models:
+  glm: "glm-5.2"                    # Modelo principal - raciocínio, criatividade
+  deepseek: "deepseek-v4-pro"       # Código forte, mais rápido
+  qwen-local: "qwen2.5-coder-7b-instruct"  # Modelo local - executor tático
+  default: "glm-5.2"                # Padrão quando não especificado
+
+# Configuração padrão
+defaults:
+  model: "glm"  # Usa GLM-5.2 por padrão
+  temperature:
+    creative: 0.4
+    balanced: 0.3
+    precise: 0.2
+    deterministic: 0.1
+
+# Agentes por domínio
+agentes:
+  # === DOMÍNIO: PLANNING ===
+  planning:
+    PlanCreator:
+      nome: "PlanCreator"
+      role: "Criador de planos de implementação"
+      model: "glm"           # GLM para raciocínio complexo
+      temperature: 0.4        # Criatividade com consistência
+      prompt_file: "src/prompts/planning/creator.prompty"
+      output_schema: "Plan"
+
+    PlanValidator:
+      nome: "PlanValidator"
+      role: "Validador de planos (busca inconsistências)"
+      model: "deepseek"      # DeepSeek para análise detalhada
+      temperature: 0.2        # Determinismo para validação
+      prompt_file: "src/prompts/planning/validator.prompty"
+      output_schema: "PlanValidation"
+
+    DependencyChecker:
+      nome: "DependencyChecker"
+      role: "Verificador de dependências em planos"
+      model: "deepseek"      # Tarefa mecânica - DeepSeek é mais rápido
+      temperature: 0.1        # Alta precisão
+      prompt_file: "src/prompts/planning/dependency_check.prompty"
+      output_schema: "PlanValidation"
+
+  # === DOMÍNIO: AUDITORIA ===
+  audit:
+    BugHunter:
+      nome: "BugHunter"
+      role: "Caçador de bugs de software"
+      model: "glm"           # GLM para análise profunda
+      temperature: 0.3        # Busca criativa mas consistente
+      prompt_file: "src/prompts/audit/bug_hunter.prompty"
+      output_schema: "Finding[]"
+
+    SecAudit:
+      nome: "SecAudit"
+      role: "Auditor de segurança"
+      model: "glm"           # GLM para segurança crítico
+      temperature: 0.2        # Precisão em segurança
+      prompt_file: "src/prompts/audit/security.prompty"
+      output_schema: "Finding[]"
+
+    PerfAnalyst:
+      nome: "PerfAnalyst"
+      role: "Analista de performance"
+      model: "deepseek"      # DeepSeek é forte em código/performance
+      temperature: 0.3        # Análise equilibrada
+      prompt_file: "src/prompts/audit/performance.prompty"
+      output_schema: "Finding[]"
+
+  # === DOMÍNIO: VERIFICAÇÃO ADVERSARIAL ===
+  verify:
+    BugRefuter:
+      nome: "BugRefuter"
+      role: "Advogado do diabo para bugs (tenta refutar)"
+      model: "glm"           # GLM para ceticismo complexo
+      temperature: 0.4        # Ceticismo requer variação
+      prompt_file: "src/prompts/verify/bug_refuter.prompty"
+      output_schema: "Verdict[]"
+
+    SecSkeptic:
+      nome: "SecSkeptic"
+      role: "Cético de vulnerabilidades (questiona exploits)"
+      model: "glm"           # GLM para análise de segurança
+      temperature: 0.3        # Balance entre ceticismo e custo
+      prompt_file: "src/prompts/verify/security_skeptic.prompty"
+      output_schema: "Verdict[]"
+
+    PerfDoubter:
+      nome: "PerfDoubter"
+      role: "Cético de problemas de performance"
+      model: "deepseek"      # Tarefa mais simples - DeepSeek é suficiente
+      temperature: 0.3        # Tarefa mais simples
+      prompt_file: "src/prompts/verify/performance_doubter.prompty"
+      output_schema: "Verdict[]"
+
+    CompletenessCheck:
+      nome: "CompletenessCheck"
+      role: "Meta-auditor (verifica se nada ficou de fora)"
+      model: "glm"           # Meta-análise complexa
+      temperature: 0.4        # Pensamento amplo
+      prompt_file: "src/prompts/verify/completeness_check.prompty"
+      output_schema: "CompletenessReport"
+
+  # === DOMÍNIO: GERAÇÃO DE CÓDIGO ===
+  codegen:
+    CodeGen:
+      nome: "CodeGen"
+      role: "Gerador de código a partir de planos"
+      model: "deepseek"      # DeepSeek é muito forte em código
+      temperature: 0.3        # Criatividade controlada
+      prompt_file: "src/prompts/codegen/generator.prompty"
+      output_schema: "CodeOutput"
+
+    CodeGenLocal:
+      nome: "CodeGenLocal"
+      role: "Gerador de código via modelo local (Qwen2.5-Coder-7B)"
+      model: "qwen-local"    # Modelo local quantizado
+      provider: "local-qwen" # Provider com auto-recovery
+      temperature: 0.3        # Criatividade controlada
+      prompt_file: "src/prompts/codegen/generator.prompty"
+      output_schema: "CodeOutput"
+
+    CodeVerifier:
+      nome: "CodeVerifier"
+      role: "Verificador de código gerado"
+      model: "deepseek"      # DeepSeek para verificação de código
+      temperature: 0.2        # Precisão na verificação
+      prompt_file: "src/prompts/codegen/verifier.prompty"
+      output_schema: "CodeVerification"
+
+# Grupos de agentes para workflows
+workflows:
+  plano_completo:
+    - "planning.PlanCreator"
+    - "planning.PlanValidator"
+    - "planning.DependencyChecker"
+
+  auditoria_codigo:
+    auditores:
+      - "audit.BugHunter"
+      - "audit.SecAudit"
+      - "audit.PerfAnalyst"
+    verificadores:
+      - "verify.BugRefuter"
+      - "verify.SecSkeptic"
+      - "verify.PerfDoubter"
+    meta:
+      - "verify.CompletenessCheck"
+
+  implementacao:
+    - "codegen.CodeGen"
+    - "codegen.CodeVerifier"
